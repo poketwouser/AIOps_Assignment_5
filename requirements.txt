@@ -1,0 +1,14 @@
+fastapi>=0.110
+uvicorn>=0.30
+scikit-learn>=1.4
+pandas>=2.2
+joblib>=1.4
+numpy
+requests
+prometheus_client>=0.20
+mlflow>=3
+ray[serve]>=2.40
+pyyaml
+pytest
+httpx
+matplotlib

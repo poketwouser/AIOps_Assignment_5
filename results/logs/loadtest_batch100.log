@@ -1,0 +1,2 @@
+ concurrency  requests   rps  p50_ms  p95_ms  p99_ms  errors  replicas     versions
+           1      1252 313.0     2.8     4.9     6.1       0         1 {'v1': 1252}

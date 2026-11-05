@@ -1,0 +1,10 @@
+smoke test: http://127.0.0.1:8000  expect=v2  max_p95=80.0 ms
+  [PASS] healthz                                HTTP 200 {'status': 'ok', 'model_version': 'v1'}
+  [FAIL] expected model version                 served=v1 expected=v2
+  [PASS] 20-row batch: 200, finite, plausible   HTTP 200, 20 predictions, range 7.0-380.3 min
+  [PASS] sanity: longer distance not shorter    distance_km [5.0, 40.0, 120.0] -> [36.3, 126.6, 332.9]
+  [PASS] sanity: more traffic not shorter       traffic_index [0.1, 0.5, 0.9] -> [75.1, 92.2, 109.3]
+  [PASS] sanity: more stops not shorter         n_stops [1, 8, 20] -> [66.3, 96.6, 148.5]
+  [PASS] invalid input -> 422                   hour=25 -> HTTP 422
+  [PASS] latency p95                            p95=3.7 ms over 30 requests (limit 80.0 ms)
+SMOKE TEST FAILED (7/8 passed) -> do not release / roll back

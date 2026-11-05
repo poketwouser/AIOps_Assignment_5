@@ -1,0 +1,22 @@
+{
+  "requests": 200,
+  "served_versions": {
+    "prod": [
+      "v1"
+    ],
+    "candidate": [
+      "v2"
+    ]
+  },
+  "mean_abs_diff_min": 9.48,
+  "pct_diff_gt_10min": 35.0,
+  "max_abs_diff_min": 51.7,
+  "p95_ms": {
+    "prod": 6.34,
+    "candidate": 6.91
+  },
+  "p50_ms": {
+    "prod": 4.49,
+    "candidate": 4.68
+  }
+}

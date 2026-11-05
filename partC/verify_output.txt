@@ -1,0 +1,36 @@
+Ray cluster resources: 2.0 CPU
+
+Deployed build(weight=0.2). Deployments:
+    EtaModelV1   HEALTHY  replicas={'RUNNING': 2}
+    EtaModelV2   HEALTHY  replicas={'RUNNING': 1}
+    Router       HEALTHY  replicas={'RUNNING': 1}
+    CPU reserved at max scale: 1.35 of 2.0 | candidate autoscaling: {'min_replicas': 1, 'initial_replicas': 1, 'max_replicas': 3, 'target_ongoing_requests': 2, 'upscale_delay_s': 3, 'downscale_delay_s': 30, 'metrics_interval_s': 2, 'look_back_period_s': 10}
+    Ray available CPU now: 1.15
+
+(a) share routed to the candidate, 1000 distinct customers, weight 0.2
+    v2 customers: 208 / 1000 = 0.208  (allowed 0.16 .. 0.24)
+    PASS
+
+(b) second call for 200 customers
+    same arm: 200 / 200   e.g. cust-00000:v1->v1, cust-00001:v1->v1, cust-00002:v1->v1, cust-00003:v1->v1
+    PASS
+
+(c) serve.delete + redeploy the identical app, then call the same 200 customers
+    EtaModelV1   HEALTHY  replicas={'RUNNING': 2}
+    EtaModelV2   HEALTHY  replicas={'RUNNING': 1}
+    Router       HEALTHY  replicas={'RUNNING': 1}
+    same arm after redeploy: 200 / 200
+    PASS
+
+(d) raise weight 0.2 -> 0.5, call all 1000 customers again
+    candidate -> prod: 0   prod -> candidate: 312   new v2 share: 0.520
+    PASS
+
+(e) X-Beta: 1 header, 50 requests from customers that the hash puts on prod
+    with header: 50 / 50 on v2 | same customers without header: ['v1', 'v1', 'v1', 'v1', 'v1']
+    PASS
+
+example response: {'predictions': [102.2], 'model_version': 'v1', 'served_by': '5n72f1hx', 'arm': 'v1'}
+
+ALL 5 CHECKS PASSED
+[33m(raylet)[0m Task ServeController.graceful_shutdown failed. There are infinite retries remaining, so the task will be retried. Error: The actor is dead because it was killed by `ray.kill`.

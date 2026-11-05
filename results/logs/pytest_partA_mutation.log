@@ -1,0 +1,8 @@
+    raise RuntimeError("secret internal detail /opt/model.joblib")
+RuntimeError: secret internal detail /opt/model.joblib
+====================================================================== short test summary info ======================================================================
+FAILED ../../../../../tmp/mut/test_eta_app.py::test_cross_field_infeasible - assert 200 == 422
+FAILED ../../../../../tmp/mut/test_eta_app.py::test_request_id_echoed - AssertionError: assert 'cfc1e7ce-cc2...-1178e497c5c9' == 'abc-123'
+FAILED ../../../../../tmp/mut/test_eta_app.py::test_request_id_on_error - AssertionError: assert ('89c2cf95-6c3...-976406040e0f' == 'err-9'
+FAILED ../../../../../tmp/mut/test_eta_app.py::test_generic_500 - AssertionError: assert {'error': 'in...5d4fa2740ef4'} == {'error': 'in...id': 'boom-1'}
+4 failed, 11 passed in 1.03s
