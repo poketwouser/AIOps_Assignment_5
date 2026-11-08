@@ -7,6 +7,7 @@ gated in MLflow, released through a sticky Ray Serve canary, and checked by a sm
 Everything runs on the CPU.
 
 The report with all tables and answers is [`report/REPORT.pdf`](report/REPORT.pdf) (LaTeX source `report/REPORT.tex`).
+TAs: [`Instructions_for_TAs.md`](Instructions_for_TAs.md) has a per-rubric checklist. AI use is in [`AI_DISCLOSURE.md`](AI_DISCLOSURE.md).
 
 ---
 
@@ -14,7 +15,7 @@ The report with all tables and answers is [`report/REPORT.pdf`](report/REPORT.pd
 
 | Rubric item (points) | Code | Evidence |
 |---|---|---|
-| A1 Correct, complete service (12) | [`partA/eta_app.py`](partA/eta_app.py) | [`screenshots/A1_service`](screenshots/A1_service), report §A1 |
+| A1 Correct, complete service (12) | [`partA/eta_app.py`](partA/eta_app.py) | [`screenshots/A1_service`](screenshots/A1_service), report §2 |
 | A2 Test suite (5) | [`partA/test_eta_app.py`](partA/test_eta_app.py) (15 tests) | [`screenshots/A2_tests`](screenshots/A2_tests) (pass + the mutation check) |
 | A3 Load test and reasoning (8) | [`partA/loadtest_results.json`](partA/loadtest_results.json) + the other `partA/loadtest_*.json` | [`screenshots/A3_load_test`](screenshots/A3_load_test), report §A3 |
 | B1 Registration (8) | [`partB/eta_mlflow.py`](partB/eta_mlflow.py) `register()` | [`screenshots/B1_registry`](screenshots/B1_registry), report §B1 |
@@ -24,7 +25,7 @@ The report with all tables and answers is [`report/REPORT.pdf`](report/REPORT.pd
 | C2 Verification script (8) | [`partC/verify_ray.py`](partC/verify_ray.py) | [`partC/verify_output.txt`](partC/verify_output.txt), [`screenshots/C2_verify`](screenshots/C2_verify) |
 | C3 Short answers (5) | | report §C3 |
 | D1 Release gate (6) | [`partD/smoke_eta.py`](partD/smoke_eta.py) | [`screenshots/D1_smoke`](screenshots/D1_smoke), abort criteria in report §D |
-| Machine description, "not tested" list | | report §1 Introduction and §6 Not Tested |
+| Machine description, "not tested" list | | report §1 Machine and §6 Not Tested |
 
 ---
 
@@ -112,6 +113,6 @@ python partD/smoke_eta.py --url http://127.0.0.1:8100 --expect-version v1; echo 
 ## Submission zip
 
 ```bash
-zip -r Module4_<rollno>.zip partA partB partC partD -x "*/__pycache__/*"
+zip -r Module4_<rollno>.zip partA partB partC partD screenshots eta_data.py load_test.py requirements.txt README.md Instructions_for_TAs.md AI_DISCLOSURE.md -x "*/__pycache__/*"
 zip -j Module4_<rollno>.zip report/REPORT.pdf   # report at the zip root
 ```
