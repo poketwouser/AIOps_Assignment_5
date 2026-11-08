@@ -1,8 +1,6 @@
 \documentclass[10pt]{article}
 \usepackage[a4paper,margin=0.65in]{geometry}
 \usepackage{amsmath,amssymb}
-\usepackage{graphicx}
-\usepackage{subcaption}
 \usepackage{array}
 \usepackage{enumitem}
 \usepackage{xcolor}
@@ -29,41 +27,17 @@
   \end{tabular}
 \end{center}
 
-\section{Introduction}
-This assignment builds and releases an ETA (estimated delivery time) model as a production service:
-a validated FastAPI REST service with metrics and a load test (Part A), an MLflow registry with a promotion
-gate and a shadow comparison (Part B), a sticky canary on Ray Serve (Part C) and a release smoke test with
-canary abort criteria (Part D). All numbers come from runs on my laptop on 5 Nov 2026; the raw outputs are in
-\code{partA/*.json}, \code{partB/gate\_output.txt}, \code{partB/shadow\_output.txt} and \code{partC/verify\_output.txt},
-with screenshots of every run in \code{screenshots/}.
-
-\textbf{Machine.} AMD Ryzen 7 8840HS (8 cores / 16 threads), 14\,GiB RAM, Ubuntu (Linux 7.0), Python 3.10.22 (conda).
+\section{Machine}
+AMD Ryzen 7 8840HS (8 cores / 16 threads), 14\,GiB RAM, Ubuntu (Linux 7.0), Python 3.10.22 (conda).
 fastapi 0.162.0, uvicorn 0.54.0, pydantic 2.14.3, scikit-learn 1.7.2, mlflow 3.18.0, ray 2.60.0, prometheus\_client 0.26.0.
-The load generator ran on the same laptop as the server. \code{python eta\_data.py}: v1 (Ridge) fresh MAE 11.95\,min,
-v2 (GBR) fresh MAE 6.10\,min.
+The load generator ran on the same laptop as the server. All numbers come from runs on 5 Nov 2026 (raw outputs in
+\code{partA/*.json}, \code{partB/*.txt}, \code{partC/verify\_output.txt}).
 
 %================================================
 \section{Part A: REST Service}
 
-\subsection{A1. Service (\code{partA/eta\_app.py})}
-\begin{itemize}
-  \item \code{POST /v1/models/eta:predict} with a pydantic \code{PredictRequest}; predictions rounded to 1 decimal, in input order.
-  \item \code{Field(ge/le/gt)} on every feature; \code{instances} has \code{min\_length=1, max\_length=500}.
-  \item Cross-field rule (\code{model\_validator}): \code{distance\_km > 150} and \code{n\_stops > 20} $\Rightarrow$ ``infeasible'' $\Rightarrow$ 422.
-  \item Middleware takes \code{X-Request-ID} or generates a \code{uuid4} and echoes it on every response (including 422 and 500).
-  \item \code{RequestValidationError} handler returns \code{\{"error": "validation\_failed", "details": [\{field, msg\}], "request\_id"\}}, with \code{field} like \code{instances.0.hour}.
-  \item Own \code{CollectorRegistry}: counter \code{eta\_requests\_total\{path, status\}} and histogram \code{eta\_request\_latency\_seconds} (11 buckets + \code{+Inf}). \code{/metrics} is skipped, and \code{path} is the route template, so random URLs cannot create new label values.
-  \item \code{GET /healthz}; inference is wrapped in \code{try/except} and returns a generic 500 \code{\{"error": "internal\_error", "request\_id"\}}; the traceback is logged on the server only.
-  \item The bundle is loaded once at import; the endpoint is a plain \code{def}, so sklearn runs in FastAPI's thread pool (as in Lecture 10 \code{rest\_app.py}).
-\end{itemize}
-
-\subsection{A2. Tests (\code{partA/test\_eta\_app.py}): 15 passed}
-Valid request; batch order; 5 kinds of invalid input (out of range, wrong type, missing field, \code{rain=2},
-\code{weight\_kg=0}); the cross-field rule at both edges (150/21 and 151/20 allowed); batch sizes 0, 500 and 501;
-request-id echo, generation and on a 422; \code{/healthz}; the metrics text (counter goes up by exactly 1 for 200 and 422,
-\code{+Inf}, \code{\_sum}, \code{\_count}, no \code{/metrics} series); and a generic 500 from a monkeypatched model whose
-exception text must not leak. \textbf{Mutation check:} changing \code{150}$\to$\code{1500} and removing the header echo in a copy
-of the app makes \textbf{4 tests fail}.
+A1 and A2: \code{partA/eta\_app.py} and \code{partA/test\_eta\_app.py} (\textbf{15 tests pass}; breaking the
+cross-field rule and the header echo in a copy of the app makes 4 fail).
 
 \subsection{A3. Load Test (v1, batch 1, 4\,s per level)}
 
@@ -99,24 +73,11 @@ of the app makes \textbf{4 tests fail}.
 
 \textbf{Change: 2 uvicorn workers.} The CPU-bound work runs under one GIL per process, so a second process should double capacity.
 
-\begin{figure}[h]
-  \centering
-  \begin{subfigure}{0.45\linewidth}\centering
-    \includegraphics[width=\linewidth]{figures/a3_throughput.pdf}\caption{Throughput}
-  \end{subfigure}\hfill
-  \begin{subfigure}{0.45\linewidth}\centering
-    \includegraphics[width=\linewidth]{figures/a3_p95.pdf}\caption{p95 latency vs.\ SLO}
-  \end{subfigure}
-  \caption{Load test, 1 vs.\ 2 uvicorn workers (from \code{partA/loadtest\_*.json}).}
-\end{figure}
-
 \begin{itemize}
   \item At the same concurrency: \textbf{1.96$\times$ ($c=8$) and 2.02$\times$ ($c=16$)}; peak vs.\ peak $1072.8/619.5 =$ \textbf{1.73$\times$}.
   At $c=1$--$2$ nothing changes, since one request at a time cannot use two processes.
   \item p95 at $c=32$ drops from 96.5 to 40.9\,ms, so capacity under the SLO is now $\approx$ 1{,}050\,req/s. \code{top} shows both workers
   and the load generator at $\sim$100\% CPU, so the generator is now also a limit.
-  \item Side effect: \code{prometheus\_client} counters are per process, so \code{/metrics} shows one worker's counts
-  (needs \code{PROMETHEUS\_MULTIPROC\_DIR}; not done).
 \end{itemize}
 
 %================================================
@@ -138,16 +99,8 @@ of the app makes \textbf{4 tests fail}.
 \end{center}
 
 \subsection{B2. Promotion Gate}
-\begin{itemize}
-  \item \code{decide()} is pure (no I/O, inputs unmodified) and returns 4 booleans plus the numbers:
-  \code{mae\_gain}: $(\text{prod}-\text{cand})/\text{prod} \ge$ \code{min\_rel\_gain}; \code{latency\_p95}: cand p95 $\le$ \code{max\_p95\_ms};
-  \code{rush\_slice}, \code{rain\_slice}: cand slice MAE $\le$ prod slice MAE $\times(1+$\code{max\_slice\_regression}$)$.
-  ``Not more than 0.05'' is read as relative (5\%), like the gain; a $10^{-9}$ tolerance stops float error flipping values exactly on a threshold.
-  \item \code{promotion\_gate()} loads \code{@prod} and \code{@candidate}, evaluates both on \code{make\_data(2000, seed=99)} (unseen; training used seed 1)
-  and times 200 single-row predictions after 10 warm-ups.
-  \item \code{test\_gate.py}: \textbf{13 passed} (on, just inside and just outside every threshold; a candidate that wins overall but regresses on rain;
-  custom thresholds; purity).
-\end{itemize}
+\code{promotion\_gate()} evaluates \code{@prod} and \code{@candidate} on \code{make\_data(2000, seed=99)} and times 200
+single-row predictions. \code{test\_gate.py}: \textbf{13 passed} (on, just inside and just outside every threshold).
 
 \begin{center}
 \begin{tabular}{|c|c|c|c|c|}
@@ -188,28 +141,10 @@ p95 latency, prod :5101 / candidate :5102 & \textbf{6.34 / 6.91 ms} (p50 4.49 / 
 %================================================
 \section{Part C: Ray Serve Sticky Canary}
 
-\subsection{C1. Application (\code{partC/eta\_ray.py})}
-\begin{itemize}
-  \item \code{EtaModelV1} (prod): \code{num\_replicas=2}. \code{EtaModelV2} (candidate): autoscaling min 1 / max 3, \code{target\_ongoing\_requests=2},
-  upscale 3\,s, downscale 30\,s, metrics interval 2\,s, look-back 10\,s. A FastAPI ingress \code{Router} takes \code{\{"customer\_id", "instances"\}} and returns the
-  model output plus \code{"arm"}.
-  \item \textbf{Sticky split:} $\text{bucket}(id) = \text{first 8 bytes of sha256}(id)/2^{64}$; candidate iff bucket $<$ weight. Routing is per customer, and
-  because the condition is monotonic, raising the weight only moves customers from prod to candidate. \code{X-Beta: 1} forces v2.
-  \item CPUs: router 0.1 + prod $2\times0.25$ + candidate $\le 3\times0.25$ = \textbf{1.35 of 2 CPUs} (\code{ray status}: 0.85/2.0 at minimum scale).
-\end{itemize}
-
-\subsection{C2. Verification (\code{partC/verify\_ray.py}, \code{num\_cpus=2}, 1000 ids, weight 0.2): all 5 checks pass}
-\begin{center}
-\begin{tabular}{|l|l|}
-\hline
-\textbf{Check} & \textbf{Evidence} \\ \hline
-(a) Share & 208/1000 = 0.208 on v2 (allowed 0.16--0.24) \\
-(b) Second call & 200/200 same arm \\
-(c) After \code{serve.delete} + redeploy & 200/200 same arm \\
-(d) Weight 0.2 $\to$ 0.5 & candidate $\to$ prod: \textbf{0}; prod $\to$ candidate: 312; new share 0.520 \\
-(e) \code{X-Beta: 1} & 50/50 on v2 (same customers without the header: v1) \\ \hline
-\end{tabular}
-\end{center}
+C1 and C2: \code{partC/eta\_ray.py} (sha256 bucket of \code{customer\_id}; router 0.1 + replicas 0.25 CPU each, at most
+1.35 of 2 CPUs) and \code{partC/verify\_ray.py}. All 5 checks pass (\code{partC/verify\_output.txt}): (a) 208/1000 on v2;
+(b) and (c) 200/200 same arm on a second call and after a redeploy; (d) weight $0.2\to0.5$: 0 customers moved back to prod;
+(e) \code{X-Beta: 1}: 50/50 on v2.
 
 \subsection{C3. Short Answers}
 \begin{enumerate}
@@ -227,11 +162,8 @@ p95 latency, prod :5101 / candidate :5102 & \textbf{6.34 / 6.91 ms} (p50 4.49 / 
 
 %================================================
 \section{Part D: Release Gate}
-\code{partD/smoke\_eta.py --url \dots\ --expect-version \dots\ [--max-p95-ms 80]} runs 8 checks and exits 0 or 1: \code{/healthz}; expected
-\code{model\_version}; a 20-row batch (200, finite, 0--2000 min); \textbf{3 model-sanity checks} (ETA does not decrease as distance goes 5 $\to$ 40 $\to$ 120 km,
-traffic 0.1 $\to$ 0.5 $\to$ 0.9, or stops 1 $\to$ 8 $\to$ 20); \textbf{invalid input (\code{hour=25}) $\to$ 422}; and p95 of 30 single-row requests $\le$ limit.
-It works against both Part A and Part C. Runs: Part A v1 PASS (p95 2.5\,ms), Part A v2 PASS (4.8\,ms), Ray app v1 PASS (20.1\,ms); \textbf{exit 1}
-for a wrong expected version and for an impossible \code{--max-p95-ms 0.5}.
+\code{partD/smoke\_eta.py}: 8 checks, including 3 model-sanity checks and invalid input $\to$ 422. Passes against Part A (v1, v2)
+and the Ray app; exits 1 for a wrong expected version and for \code{--max-p95-ms 0.5}.
 
 \textbf{Abort criteria for a 10\% canary of v2} (v2 arm vs.\ v1 over the same window; any one $\Rightarrow$ set weight to 0):
 \begin{center}
@@ -255,7 +187,6 @@ for a wrong expected version and for an impossible \code{--max-p95-ms 0.5}.
   \item \code{/metrics} with \code{--workers 2} is per process (multiprocess mode not set up).
   \item \code{smoke\_eta.py} was not run against the MLflow servers (different API: \code{/invocations}, 400 with no range checks).
   \item The shadow test uses 200 offline rows, not mirrored live traffic; the gate's p95 is in-process \code{pyfunc.predict}, not over HTTP.
-  \item Only Python 3.10 on Linux; no Docker / Kubernetes deployment (not asked).
 \end{itemize}
 
 \section{Sources and Reuse}
