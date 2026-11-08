@@ -1,3 +1,0 @@
-prod alias -> 1 | :5101 answers {'eta_minutes': 41.0, 'model_version': 'v1'}
-prod alias -> 2 | :5101 answers {'eta_minutes': 41.0, 'model_version': 'v1'} <- still v1
-prod alias moved back -> 1

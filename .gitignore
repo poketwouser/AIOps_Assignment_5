@@ -3,13 +3,19 @@ data/
 mlflow.db
 mlruns/
 mlartifacts/
+
+# Python / Jupyter
 __pycache__/
 .pytest_cache/
 .ipynb_checkpoints/
-# starter kit (files copied to the repo root)
+
+# LaTeX build files (report/REPORT.pdf is committed)
+*.aux
+*.log
+*.out
+*.synctex.gz
+
+# course handout and starter kit (starter files are copied to the repo root)
+Mod4_Assignment_Student.pdf
 Module4_Assignment_Starter/
 Assignment_Starter.zip
-# video and narration script are not part of the repo
-*.mp4
-*.webm
-VIDEO_SCRIPT.md

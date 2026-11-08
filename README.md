@@ -6,16 +6,7 @@ A delivery-time (ETA) regression model (v1 Ridge, v2 gradient boosting) served a
 gated in MLflow, released through a sticky Ray Serve canary, and checked by a smoke test before release.
 Everything runs on the CPU.
 
-Short version of the results (Ryzen 7 8840HS, 16 threads, 14 GiB):
-
-- FastAPI, 1 worker: saturates at ~520 req/s (peak 620 at concurrency 2). p95 stays under 80 ms up to ~24 requests in flight.
-  2 workers: ~1,050 req/s (2.0× at the same concurrency, 1.73× peak to peak).
-- Batch 100 costs 0.032 ms/row against 2.24 ms/row for batch 1.
-- Gate: v2 cuts MAE from 11.96 to 6.11 min (−49%) with no slice regression → promote. With `min_rel_gain=0.60` → no.
-- Shadow: v1 and v2 differ by 9.5 min on average, and 35% of requests differ by more than 10 min. p95 is 6.3 / 6.9 ms.
-- Ray canary: 20.8% of 1000 customers on v2 at weight 0.2, 100% sticky after a second call and a redeploy, and none moved back at 0.5.
-
-The report with all tables and answers is [`REPORT.md`](REPORT.md).
+The report with all tables and answers is [`report/REPORT.pdf`](report/REPORT.pdf) (LaTeX source `report/REPORT.tex`).
 
 ---
 
@@ -23,17 +14,17 @@ The report with all tables and answers is [`REPORT.md`](REPORT.md).
 
 | Rubric item (points) | Code | Evidence |
 |---|---|---|
-| A1 Correct, complete service (12) | [`partA/eta_app.py`](partA/eta_app.py) | [`screenshots/A1_service`](screenshots/A1_service), REPORT §A1 |
+| A1 Correct, complete service (12) | [`partA/eta_app.py`](partA/eta_app.py) | [`screenshots/A1_service`](screenshots/A1_service), report §A1 |
 | A2 Test suite (5) | [`partA/test_eta_app.py`](partA/test_eta_app.py) (15 tests) | [`screenshots/A2_tests`](screenshots/A2_tests) (pass + the mutation check) |
-| A3 Load test and reasoning (8) | [`partA/loadtest_results.json`](partA/loadtest_results.json) + the other `partA/loadtest_*.json` | [`screenshots/A3_load_test`](screenshots/A3_load_test), REPORT §A3 |
-| B1 Registration (8) | [`partB/eta_mlflow.py`](partB/eta_mlflow.py) `register()` | [`screenshots/B1_registry`](screenshots/B1_registry), REPORT §B1 |
+| A3 Load test and reasoning (8) | [`partA/loadtest_results.json`](partA/loadtest_results.json) + the other `partA/loadtest_*.json` | [`screenshots/A3_load_test`](screenshots/A3_load_test), report §A3 |
+| B1 Registration (8) | [`partB/eta_mlflow.py`](partB/eta_mlflow.py) `register()` | [`screenshots/B1_registry`](screenshots/B1_registry), report §B1 |
 | B2 Gate (9) | `decide()`, `promotion_gate()`, [`partB/test_gate.py`](partB/test_gate.py) (13 tests) | [`partB/gate_output.txt`](partB/gate_output.txt), [`screenshots/B2_gate`](screenshots/B2_gate) |
-| B3 Shadow + reasoning (8) | `shadow()` in `eta_mlflow.py`, [`results/alias_demo.py`](results/alias_demo.py) | [`partB/shadow_output.txt`](partB/shadow_output.txt), [`screenshots/B3_shadow`](screenshots/B3_shadow), REPORT §B3 |
+| B3 Shadow + reasoning (8) | `shadow()` in `eta_mlflow.py`, [`partB/alias_demo.py`](partB/alias_demo.py) | [`partB/shadow_output.txt`](partB/shadow_output.txt), [`screenshots/B3_shadow`](screenshots/B3_shadow), report §B3 |
 | C1 Sticky canary app (12) | [`partC/eta_ray.py`](partC/eta_ray.py) | [`screenshots/C1_ray_app`](screenshots/C1_ray_app) |
 | C2 Verification script (8) | [`partC/verify_ray.py`](partC/verify_ray.py) | [`partC/verify_output.txt`](partC/verify_output.txt), [`screenshots/C2_verify`](screenshots/C2_verify) |
-| C3 Short answers (5) | | REPORT §C3 |
-| D1 Release gate (6) | [`partD/smoke_eta.py`](partD/smoke_eta.py) | [`screenshots/D1_smoke`](screenshots/D1_smoke), abort criteria in REPORT §D |
-| Machine description, "not tested" list | | REPORT §0 and "Not tested" |
+| C3 Short answers (5) | | report §C3 |
+| D1 Release gate (6) | [`partD/smoke_eta.py`](partD/smoke_eta.py) | [`screenshots/D1_smoke`](screenshots/D1_smoke), abort criteria in report §D |
+| Machine description, "not tested" list | | report §1 Introduction and §6 Not Tested |
 
 ---
 
@@ -76,7 +67,7 @@ python -m pytest partB -v                    # 13 tests of decide()
 mlflow models serve -m "models:/eta-model@prod"      -p 5101 --env-manager local   # terminal 1
 mlflow models serve -m "models:/eta-model@candidate" -p 5102 --env-manager local   # terminal 2
 python partB/eta_mlflow.py shadow | tee partB/shadow_output.txt
-python results/alias_demo.py                 # moves prod to v2 and back; the running :5101 keeps answering v1
+python partB/alias_demo.py                   # moves prod to v2 and back; the running :5101 keeps answering v1
 mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000                      # optional, for the registry view
 ```
 
@@ -121,19 +112,6 @@ python partD/smoke_eta.py --url http://127.0.0.1:8100 --expect-version v1; echo 
 ## Submission zip
 
 ```bash
-zip -r Module4_<rollno>.zip REPORT.md partA partB partC partD -x "*/__pycache__/*"
-```
-
-## Files
-
-```
-eta_data.py, load_test.py   starter files (unchanged)
-partA/                      eta_app.py, test_eta_app.py, loadtest_*.json
-partB/                      eta_mlflow.py, test_gate.py, gate_output.txt, shadow_output.txt
-partC/                      eta_ray.py, verify_ray.py, verify_output.txt
-partD/                      smoke_eta.py
-results/                    alias_demo.py, logs/ (raw output of every run)
-screenshots/                one folder per rubric item
-REPORT.md                   report
-AI_DISCLOSURE.md            AI use (course code of conduct, section 4)
+zip -r Module4_<rollno>.zip partA partB partC partD -x "*/__pycache__/*"
+zip -j Module4_<rollno>.zip report/REPORT.pdf   # report at the zip root
 ```
